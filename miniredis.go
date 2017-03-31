@@ -96,23 +96,35 @@ func newRedisDB(id int, l *sync.Mutex) RedisDB {
 }
 
 // Run creates and Start()s a Miniredis.
-func Run() (*Miniredis, error) {
+// listenOn - "host:port" or "", then port will be chose as a random one
+func Run(listenOn string) (*Miniredis, error) {
 	m := NewMiniRedis()
-	return m, m.Start()
+	return m, m.Start(listenOn)
 }
 
-// Start starts a server. It listens on a random port on localhost. See also
+// Start starts a server. It listens on a random port on localhost. 
+// listenOn - "host:port"
+// See also
 // Addr().
-func (m *Miniredis) Start() error {
+func (m *Miniredis) Start(listenOn string) error {
 	m.Lock()
 	defer m.Unlock()
 
-	l, err := listen("127.0.0.1:0")
+	var err error
+	var l net.Listener
+
+	if listenOn == ""{
+		l, err = listen("127.0.0.1:0")
+	}else{
+		l, err = listen(listenOn)
+	}
+
 	if err != nil {
 		return err
 	}
 	m.listen = l
 	m.listenAddr = l.Addr().String()
+
 	m.srv = redeo.NewServer(&redeo.Config{Addr: m.listenAddr})
 
 	commandsConnection(m, m.srv)
